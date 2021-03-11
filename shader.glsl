@@ -1,4 +1,4 @@
-#version 410 core
+  #version 410 core
 
 uniform float fGlobalTime; // in seconds
 uniform vec2 v2Resolution; // viewport resolution (in pixels)
@@ -17,12 +17,18 @@ const float PI = acos(-1);
 const float TAU = (2*PI);
 const float PHI = (sqrt(5)*0.5 + 0.5);
 
+#define saturate(x) clamp(x, 0, 1)
+#define fmod(x, y) mod(x, y)
+#define atan2(x,y) atan(x,y)
+float sgn(float x) {
+	return (x<0)?-1:1;
+}
+
+vec2 sgn(vec2 v) {
+	return vec2((v.x<0)?-1:1, (v.y<0)?-1:1);
+}
 
 
-float sgn(float x) { return (x<0)?-1:1; }
-
-vec2 sgn(vec2 v) { return vec2((v.x<0)?-1:1, (v.y<0)?-1:1); }
-float fmod(float x, float y) { return x - y * trunc(x/y); }
 /***************************************************************************
 
         SIGNED DISTANCE FIELD FUNCTIONS
@@ -53,6 +59,11 @@ float sdBox( vec3 p, vec3 b )
 {
   vec3 q = abs(p) - b;
   return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
+float sdSphere( vec3 p, float r )
+{
+  return length(p) - r;
 }
 
 float sdHexPrism( vec3 p, vec2 h )
@@ -130,8 +141,6 @@ float sdCylinder(vec3 p, float r, float height) {
 /*float fCapsule(vec3 p, float r, float c) {
   return mix(length(p.xz) - r, length(vec3(p.x, abs(p.y) - c, p.z)) - r, step(c, abs(p.y)));
 }*/
-
-float saturate(float x) { return clamp(x, 0, 1); }
 
 // Distance to line segment between <a> and <b>, used for fCapsule() version 2below
 float sdLineSegment(vec3 p, vec3 a, vec3 b) {
@@ -227,6 +236,11 @@ float fCone(vec3 p, float radius, float height) {
 ////////////////////////////////////////////////////////////////
 
 
+// rotate 2d space with given angle
+void tRotate(inout vec2 p, float angel) {
+  vec2 s = sin(vec2(angel, angel + PI * .5));
+  p *= mat2(s.y, -s.x, s);
+}
 
 // Rotate around a coordinate axis (i.e. in a plane perpendicular to that axis) by angle <a>.
 // Read like this: R(p.xz, a) rotates "x towards z".
@@ -288,8 +302,7 @@ float pModInterval1(inout float p, float size, float start, float stop) {
 // For easier use, num of repetitions is use to specify the angle.
 float pModPolar(inout vec2 p, float repetitions) {
   float angle = 2*PI/repetitions;
-  //TODO: are these parameters correct way?
-  float a = atan(p.y, p.x) + angle/2.;
+  float a = atan2(p.y, p.x) + angle/2.;
   float r = length(p);
   float c = floor(a/angle);
   a = fmod(a,angle) - angle/2.;
@@ -303,7 +316,7 @@ float pModPolar(inout vec2 p, float repetitions) {
 // Repeat in two dimensions
 vec2 pMod2(inout vec2 p, vec2 size) {
   vec2 c = floor((p + size*0.5)/size);
-  p = mod(p + size*0.5,size) - size*0.5;
+  p = fmod(p + size*0.5,size) - size*0.5;
   return c;
 }
 
@@ -311,16 +324,16 @@ vec2 pMod2(inout vec2 p, vec2 size) {
 vec2 pModMirror2(inout vec2 p, vec2 size) {
   vec2 halfsize = size*0.5;
   vec2 c = floor((p + halfsize)/size);
-  p = mod(p + halfsize, size) - halfsize;
-  p *= mod(c,vec2(2,2))*2 - vec2(1,1);
+  p = fmod(p + halfsize, size) - halfsize;
+  p *= fmod(c,vec2(2,2))*2 - vec2(1,1);
   return c;
 }
 
 // Same, but mirror every second cell at the diagonal as well
 vec2 pModGrid2(inout vec2 p, vec2 size) {
   vec2 c = floor((p + size*0.5)/size);
-  p = mod(p + size*0.5, size) - size*0.5;
-  p *= mod(c,vec2(2,2))*2 - vec2(1,1);
+  p = fmod(p + size*0.5, size) - size*0.5;
+  p *= fmod(c,vec2(2,2))*2 - vec2(1,1);
   p -= size/2;
   if (p.x > p.y) p.xy = p.yx;
   return floor(c/2);
@@ -329,7 +342,7 @@ vec2 pModGrid2(inout vec2 p, vec2 size) {
 // Repeat in three dimensions
 vec3 pMod3(inout vec3 p, vec3 size) {
   vec3 c = floor((p + size*0.5)/size);
-  p = mod(p + size*0.5, size) - size*0.5;
+  p = fmod(p + size*0.5, size) - size*0.5;
   return c;
 }
 
@@ -626,24 +639,74 @@ float tyyppiScene(vec3 samplePoint) {
 
 
 
-
-float ruuvi( vec3 samplePoint ) {
-  vec3 pos = -vec3(4,0,0);
-  float k = sdHexPrism(samplePoint - pos, vec2(1,0.6) );
-  samplePoint = vec3( rotateY( samplePoint.z ) * vec4(samplePoint,0) );
-  k = min( k, sdHexPrismY( samplePoint-pos - vec3(0,0,2), vec2(0.6,2) ) );
-	
-  return k;
-return sdRoundBox( samplePoint - vec3(4,0,0), vec3(1,0.5,1), 0.9 );
-  return sdBox(samplePoint + vec3(4,0,0), vec3(2,2,2) );
+float sdHexPrismRuuvi_skitso( vec3 p, vec2 h )
+{
+  vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+  pR(k.xy, (cos(p.z+1.57) * cos(p.x) * sin(p.y))* (fGlobalTime) / 100.0 );
+  p = abs(p);
+  p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
+  k = vec3(-0.8660254, 0.5, 0.57735);
+  vec2 d = vec2(
+       length(p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x))*sign(p.y-h.x),
+       p.z-h.y );
+  return min(max(d.x,d.y),0.0) + length(max(d,0.0));
 }
+
+float sdRuuvi( vec3 p, vec2 h, float ang )
+{
+  float rot = atan2(p.x,p.y);
+  float d = length(p.xy) - h.x  + sin(p.z*ang+rot)/10.0;
+  return max(d, abs(p.z) - h.y);
+}
+// another direction
+float sdRuuviY( vec3 p, vec2 h, float ang )
+{
+  float rot = atan2(p.x,p.z);
+  float d = length(p.xz) - h.x  + sin(p.y*ang+rot)/10.0;
+  return max(d, abs(p.y) - h.y);
+}
+
+
+
+float bolt( vec3 samplePoint, vec3 pos ) {
+  float k = sdHexPrism(samplePoint - pos, vec2(1,0.6) );
+  k = max( k, sdSphere( samplePoint - pos, 1.18 ) );
+  k = min( k, sdRuuvi( samplePoint-pos - vec3(0,0,2), vec2(0.5,2), 25 ) );
+  return k;
+}
+float boltNut( vec3 samplePoint, vec3 pos ) {
+  float k = sdHexPrism(samplePoint - pos, vec2(1,0.6) );
+  k = max( k, sdSphere( samplePoint - pos, 1.18 ) );
+  k = opSubtraction( sdRuuvi( samplePoint - pos, vec2(0.5,0.7), 25 ), k );
+  return k;
+}
+
+float lightBulb( vec3 samplePoint )
+{
+  float k = sdSphere( samplePoint, 3 );
+  float k2 = sdCylinder( samplePoint - vec3(0,-3,0), 1.75, 1);
+  k = fOpUnionRound( k, k2, 1);
+  
+  float kanta = sdRuuviY( samplePoint-vec3(0,-5,0), vec2(1.75,1), 10 );
+  return fOpUnionRound(k, kanta, 1);
+  return k;
+}
+
+float ruuviScene( vec3 samplePoint ) {
+
+  return lightBulb( samplePoint );
+
+  vec3 pos = vec3(0,0,0);
+  return boltNut( samplePoint, pos );
+}
+
 
 
 vec3 estimateNormal(vec3 p) {
   return normalize(vec3(
-      ruuvi(vec3(p.x + EPSILON, p.y, p.z)) - ruuvi(vec3(p.x - EPSILON, p.y, p.z)),
-      ruuvi(vec3(p.x, p.y + EPSILON, p.z)) - ruuvi(vec3(p.x, p.y - EPSILON, p.z)),
-      ruuvi(vec3(p.x, p.y, p.z  + EPSILON)) - ruuvi(vec3(p.x, p.y, p.z - EPSILON))
+      ruuviScene(vec3(p.x + EPSILON, p.y, p.z)) - ruuviScene(vec3(p.x - EPSILON, p.y, p.z)),
+      ruuviScene(vec3(p.x, p.y + EPSILON, p.z)) - ruuviScene(vec3(p.x, p.y - EPSILON, p.z)),
+      ruuviScene(vec3(p.x, p.y, p.z  + EPSILON)) - ruuviScene(vec3(p.x, p.y, p.z - EPSILON))
   ));
   return normalize(vec3(
       tyyppiScene(vec3(p.x + EPSILON, p.y, p.z)) - tyyppiScene(vec3(p.x - EPSILON, p.y, p.z)),
@@ -673,13 +736,13 @@ vec2 sdf( vec3 eye, vec3 viewRayDirection )
     for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
         vec3 pos = eye + depth * viewRayDirection;
 //        float dist = scene(pos);
-	    float dist = ruuvi(pos);
+	    float dist = ruuviScene(pos);
         if (dist < EPSILON)
             return vec2(depth,dust);
         depth += dist;
-        //dust += snoise(pos) * dist;
+        dust += 0.001 * dist;
         if (depth >= end)
-            return vec2(end,dust);
+          return vec2(end,dust);
     }
     return vec2(end,dust);
 }
@@ -700,7 +763,6 @@ mat4 viewMatrix(vec3 eye, vec3 center, vec3 up) {
     vec4(s.y,u.y,-f.y, 0.0),
     vec4(s.z,u.z,-f.z, 0.0),
     vec4(0.0, 0.0, 0.0, 1) );
-  
   return mat4(
       vec4(s, 0.0),
       vec4(u, 0.0),
@@ -728,13 +790,17 @@ void main(void)
 
   vec3 viewDir = rayDirection(75.0, v2Resolution.xy, gl_FragCoord.xy);
   vec3 eye = vec3(0.0, 4.0 -  cos(fGlobalTime) , 14.0 + sin(fGlobalTime) );
-  vec3 tgt = vec3(0.0, 0.0, -10.0);
+  vec3 tgt = vec3(0.0, 0.0, 0.0);
 
-  
-  
+    
   eye.x += 0*sin(texture( texFFTSmoothed, 0 ).r * 100 );
   eye.y += 0*sin(texture( texFFTSmoothed, 0.1 ).r * 100 );
   eye.z += 0*sin(texture( texFFTSmoothed, 0.3 ).r * 100 );
+
+  eye.x = 34.0 * sin(fGlobalTime);
+  eye.y = 0;
+  eye.z = 34.0 * cos(fGlobalTime);
+
 
 
 
