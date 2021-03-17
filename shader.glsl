@@ -669,15 +669,15 @@ float sdRuuviY( vec3 p, vec2 h, float ang )
 
 
 float bolt( vec3 samplePoint, vec3 pos ) {
-  float k = sdHexPrism(samplePoint - pos, vec2(1,0.6) );
-  k = max( k, sdSphere( samplePoint - pos, 1.18 ) );
-  k = min( k, sdRuuvi( samplePoint-pos - vec3(0,0,2), vec2(0.5,2), 25 ) );
+  float k = sdHexPrism(samplePoint - pos, vec2(1.3,0.6) );
+  k = max( k, sdSphere( samplePoint - pos, 1.52 ) );
+  k = min( k, sdRuuvi( samplePoint-pos - vec3(0,0,5), vec2(0.8,5), 25 ) );
   return k;
 }
 float boltNut( vec3 samplePoint, vec3 pos ) {
   float k = sdHexPrism(samplePoint - pos, vec2(1,0.6) );
-  k = max( k, sdSphere( samplePoint - pos, 1.18 ) );
-  k = opSubtraction( sdRuuvi( samplePoint - pos, vec2(0.5,0.7), 25 ), k );
+  k = max( k, sdSphere( samplePoint - pos, 1.2 ) );
+  k = opSubtraction( sdRuuvi( samplePoint - pos, vec2(0.8,0.7), 25 ), k );
   return k;
 }
 
@@ -692,12 +692,53 @@ float lightBulb( vec3 samplePoint )
   return k;
 }
 
+
+float lightBulbKanta( vec3 p, float h, float r )
+{
+  p.y -= clamp( p.y, 0.0, h );
+  return length( p ) - r;
+}
+
+float carhead( vec3 samplePoint ) {
+  float k = sdSphere( samplePoint, 1 );
+
+  k = fOpUnionSoft( k, sdBox( samplePoint - vec3(0.4,-0.6,0), vec3(0.5,0.5,0.4) ), 0.5 );
+
+  // ohimot
+  k = opSubtraction( sdBox(samplePoint - vec3(0,0,1.3), vec3(1.5,1.5,0.5)), k );
+  k = opSubtraction( sdBox(samplePoint + vec3(0,0,1.3), vec3(1.5,1.5,0.5)), k );
+
+  // eyes
+  k = opSubtraction( sdSphere(samplePoint - vec3(0.8,0,0.3), 0.5 ), k );
+  k = opSubtraction( sdSphere(samplePoint - vec3(0.8,0,-0.3), 0.5 ), k );
+  
+  k = opOnion( k, 0.1 );
+
+  // "windows"
+  k = opSubtraction( sdBox( samplePoint - vec3(0.3,0.4,0), vec3(0.25,0.3,2) ), k );
+  k = opSubtraction( sdBox( samplePoint - vec3(-0.3,0.4,0), vec3(0.25,0.3,2) ), k );
+
+//  k = opUnion( sdSphere(samplePoint - vec3(0.8,0,0.3), 0.4 ), k );
+//  k = opUnion( sdSphere(samplePoint - vec3(0.8,0,-0.3), 0.4 ), k );
+
+  return k;
+}
+
+
 float ruuviScene( vec3 samplePoint ) {
 
-  return lightBulb( samplePoint );
+  float k4 = carhead(samplePoint);
+  return k4;
 
-  vec3 pos = vec3(0,0,0);
-  return boltNut( samplePoint, pos );
+  float k1 = lightBulb( samplePoint );
+  //float k2 = sdVerticalCapsule( samplePoint, 5, 1 );
+
+  vec3 pos = vec3(0,4.5,0);
+  float k2 = boltNut( samplePoint, pos );
+pos = vec3(-4,0,0);
+  float k3 =  bolt( samplePoint, pos );
+
+  return min( k1, min(k2, k3));
 }
 
 
@@ -797,9 +838,9 @@ void main(void)
   eye.y += 0*sin(texture( texFFTSmoothed, 0.1 ).r * 100 );
   eye.z += 0*sin(texture( texFFTSmoothed, 0.3 ).r * 100 );
 
-  eye.x = 34.0 * sin(fGlobalTime);
+  eye.x = 20.0 * sin(fGlobalTime);
   eye.y = 0;
-  eye.z = 34.0 * cos(fGlobalTime);
+  eye.z = 20.0 * cos(fGlobalTime);
 
 
 
