@@ -130,6 +130,12 @@ float sdBlob(vec3 p) {
   return l - 1.5 - 0.2 * (1.5 / 2)* cos(min(sqrt(1.01 - b / l)*(PI / 0.25), PI));
 }
 
+float sdLink( vec3 p, float le, float r1, float r2 )
+{
+  vec3 q = vec3( p.x, max(abs(p.y)-le,0.0), p.z );
+  return length(vec2(length(q.xy)-r1,q.z)) - r2;
+}
+
 // Cylinder standing upright on the xz plane
 float sdCylinder(vec3 p, float r, float height) {
   float d = length(p.xz) - r;
@@ -512,6 +518,19 @@ float fOpUnionSoft(float a, float b, float r) {
 }
 
 
+float opSmoothUnion( float d1, float d2, float k ) {
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h); }
+
+float opSmoothSubtraction( float d1, float d2, float k ) {
+    float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+    return mix( d2, -d1, h ) + k*h*(1.0-h); }
+
+float opSmoothIntersection( float d1, float d2, float k ) {
+    float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) + k*h*(1.0-h); }
+
+
 // produces a cylindical pipe that runs along the intersection.
 // No objects remain, only the pipe. This is not a boolean operator.
 float fOpPipe(float a, float b, float r) {
@@ -702,11 +721,22 @@ float lightBulbKanta( vec3 p, float h, float r )
 float carhead( vec3 samplePoint ) {
   float k = sdSphere( samplePoint, 1 );
 
-  k = fOpUnionSoft( k, sdBox( samplePoint - vec3(0.4,-0.6,0), vec3(0.5,0.5,0.4) ), 0.5 );
+//  float jaw = sdBox( samplePoint - vec3(0.4,-0.6,0), vec3(0.5,0.5,0.4) );
+  float jaw = sdRoundBox( samplePoint - vec3(0.6,-0.7,0), vec3(0.05,0.05,0.04), 0.45 );
+  k = fOpUnionSoft( jaw, k, 0.25 );
 
   // ohimot
-  k = opSubtraction( sdBox(samplePoint - vec3(0,0,1.3), vec3(1.5,1.5,0.5)), k );
-  k = opSubtraction( sdBox(samplePoint + vec3(0,0,1.3), vec3(1.5,1.5,0.5)), k );
+  //k = opSubtraction( sdBox(samplePoint - vec3(0,0,1.25), vec3(1.5,1.5,0.5)), k );
+  //k = opSubtraction( sdBox(samplePoint + vec3(0,0,1.25), vec3(1.5,1.5,0.5)), k );
+  k = opSmoothSubtraction( sdBox(samplePoint - vec3(0,0,1.753), vec3(1.5,1.5,0.5)), k, 0.97 );
+  k = opSmoothSubtraction( sdBox(samplePoint + vec3(0,0,1.753), vec3(1.5,1.5,0.5)), k, 0.97 );
+ 
+
+  // nose
+  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.15,-0.12,0), 0.0001 ), 0.2 );
+  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.20,-0.3,0), 0.02 ), 0.2 );
+  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.3,-0.35,0), 0.01 ), 0.1 );
+  //k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.3,-0.4,0.1), 0.01 ), 0.1 );
 
   // eyes
   k = opSubtraction( sdSphere(samplePoint - vec3(0.8,0,0.3), 0.5 ), k );
@@ -715,8 +745,8 @@ float carhead( vec3 samplePoint ) {
   k = opOnion( k, 0.1 );
 
   // "windows"
-  k = opSubtraction( sdBox( samplePoint - vec3(0.3,0.4,0), vec3(0.25,0.3,2) ), k );
-  k = opSubtraction( sdBox( samplePoint - vec3(-0.3,0.4,0), vec3(0.25,0.3,2) ), k );
+ // k = opSubtraction( sdBox( samplePoint - vec3(0.3,0.4,0), vec3(0.25,0.3,2) ), k );
+//  k = opSubtraction( sdBox( samplePoint - vec3(-0.3,0.4,0), vec3(0.25,0.3,2) ), k );
 
 //  k = opUnion( sdSphere(samplePoint - vec3(0.8,0,0.3), 0.4 ), k );
 //  k = opUnion( sdSphere(samplePoint - vec3(0.8,0,-0.3), 0.4 ), k );
@@ -838,9 +868,11 @@ void main(void)
   eye.y += 0*sin(texture( texFFTSmoothed, 0.1 ).r * 100 );
   eye.z += 0*sin(texture( texFFTSmoothed, 0.3 ).r * 100 );
 
-  eye.x = 20.0 * sin(fGlobalTime);
-  eye.y = 0;
-  eye.z = 20.0 * cos(fGlobalTime);
+float angle = fGlobalTime;
+angle = cos(angle) + PI / 2 ;
+  eye.x = 10.0 * sin(angle);
+  eye.y = 5 * cos(angle*1.3);
+  eye.z = 10.0 * cos(angle);
 
 
 
