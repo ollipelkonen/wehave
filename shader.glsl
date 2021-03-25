@@ -66,6 +66,11 @@ float sdSphere( vec3 p, float r )
   return length(p) - r;
 }
 
+float sdEllipsoid( in vec3 p, in vec3 r )
+{
+    return (length(p/r) - 1.0) * min(min(r.x,r.y),r.z);
+}
+
 float sdHexPrism( vec3 p, vec2 h )
 {
   const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
@@ -718,16 +723,55 @@ float lightBulbKanta( vec3 p, float h, float r )
   return length( p ) - r;
 }
 
+
+float sdMouth( vec3 p, float le, float r1, float r2 )
+{
+
+  // from opCheapBend https://iquilezles.org/www/articles/distfunctions/distfunctions.htm
+  const float ang = 10.0; // or some other amount
+  float c = cos(ang*p.x);
+  float s = sin(ang*p.x);
+  mat2  m1 = mat2(c,-s,s,c);
+  p = vec3(m1*p.xy,p.z);
+  //p = vec3(m1*p.xz,p.y).xzy;
+  return sdRoundBox(p, vec3(1,0.2,0.5), 0.1);
+
+
+
+  vec3 w = vec3( p.x, p.y, max(abs(p.z)-le,0.0) );
+
+  float k = length(vec2(length(w.yz)-r1,w.x)) - r2;
+
+
+  //ristikko
+  //if ( sdBox(p,vec3(r2,r1,le)) < 0 )
+  if ( sdRoundBox(p,vec3(r2*0.9,r1*0.1,le*0.9),0.2) < 0 )
+  {
+    //horizontal stripes are dy/xy
+    float dz = 0.05;
+    float dy = 0.06;
+    vec3 q = p;
+    q.z = abs(mod(p.z+dz, dz*2)-dz);
+    q.y = abs(mod(p.y+dy, dy*2)-dy);
+    float m = min( length(q.xz)-0.02, length(q.xy) -0.02 );  
+    //float m = length(q.xz) -0.02;  
+    return min(m,k);
+  }
+
+  return k;  
+}
+
 float carhead( vec3 samplePoint ) {
+
   float k = sdSphere( samplePoint, 1 );
+
+//return min(k,sdMouth( samplePoint - vec3(1.2,-0.8,0), 0.5, 0.12, 0.03 ));
 
 //  float jaw = sdBox( samplePoint - vec3(0.4,-0.6,0), vec3(0.5,0.5,0.4) );
   float jaw = sdRoundBox( samplePoint - vec3(0.6,-0.7,0), vec3(0.05,0.05,0.04), 0.45 );
   k = fOpUnionSoft( jaw, k, 0.25 );
 
   // ohimot
-  //k = opSubtraction( sdBox(samplePoint - vec3(0,0,1.25), vec3(1.5,1.5,0.5)), k );
-  //k = opSubtraction( sdBox(samplePoint + vec3(0,0,1.25), vec3(1.5,1.5,0.5)), k );
   k = opSmoothSubtraction( sdBox(samplePoint - vec3(0,0,1.753), vec3(1.5,1.5,0.5)), k, 0.97 );
   k = opSmoothSubtraction( sdBox(samplePoint + vec3(0,0,1.753), vec3(1.5,1.5,0.5)), k, 0.97 );
  
@@ -744,6 +788,27 @@ float carhead( vec3 samplePoint ) {
   
   k = opOnion( k, 0.1 );
 
+  //float sdLink( vec3 p, float le, float r1, float r2 )
+
+  vec3 sampleX = samplePoint + vec3(0,0,-1);
+  sampleX.x = abs(sampleX.x);
+  float ear = sdLink( sampleX, 0.1, 0.4, 0.1 );
+  k = min(ear, k );
+
+
+  float mouth = sdMouth( samplePoint - vec3(1.2,-0.8,0), 0.3, 0.2, 0.03 );
+  k = min(mouth, k );
+
+
+  //hajalla?
+  /*float size = 100;
+  float halfsize = size / 2.0;
+  vec2 yz = samplePoint.yz;
+  if ( length(samplePoint) < 1 )
+  {
+    float m = length( mod(samplePoint.yz, 1) ) - 0.1;
+    k = min(m,k);
+  }*/
   // "windows"
  // k = opSubtraction( sdBox( samplePoint - vec3(0.3,0.4,0), vec3(0.25,0.3,2) ), k );
 //  k = opSubtraction( sdBox( samplePoint - vec3(-0.3,0.4,0), vec3(0.25,0.3,2) ), k );
@@ -757,8 +822,17 @@ float carhead( vec3 samplePoint ) {
 
 float ruuviScene( vec3 samplePoint ) {
 
+    /*float a = 10.;
+    vec3 v3 = vec3(a,a,a);
+  vec2 v2 = vec2(a,a);
+    float m = length( mod(samplePoint.xy + v2, v2*2) - v2 ) - 0.1;*/
+//    return m;
+
   float k4 = carhead(samplePoint);
   return k4;
+
+
+  //return min(m,k4);
 
   float k1 = lightBulb( samplePoint );
   //float k2 = sdVerticalCapsule( samplePoint, 5, 1 );
@@ -869,10 +943,11 @@ void main(void)
   eye.z += 0*sin(texture( texFFTSmoothed, 0.3 ).r * 100 );
 
 float angle = fGlobalTime;
+float distance = 5;
 angle = cos(angle) + PI / 2 ;
-  eye.x = 10.0 * sin(angle);
+  eye.x = distance * sin(angle);
   eye.y = 5 * cos(angle*1.3);
-  eye.z = 10.0 * cos(angle);
+  eye.z = distance * cos(angle);
 
 
 
