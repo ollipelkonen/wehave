@@ -1,0 +1,68 @@
+// configs for Bonzomatic
+{
+    "skipSetupDialog": false, // If true, setup dialog will be suppressed - all values you provide below will be used without validation (at your own risk!)
+    "window":{ // default window size / state; if there's a setup dialog, it will override it
+      "width":1680,
+      "height":1050,
+      "fullscreen":true,
+    },
+    "audio":{ // default audio device settings; if there's a setup dialog, it will override it
+      "useInput":false, // if true, use line-in/mic/...; if false, attempt to create a loopback device and use stereo out
+    },
+    //"font":{ // all paths in the file are also relative to the binary, but again, can be absolute paths if that's more convenient
+    //  "file":"Input-Regular_(InputMono-Medium).ttf",
+    //  "size":16,
+    //},
+    //"rendering":{
+    //  "fftSmoothFactor": 0.9, // 0.0 means there's no smoothing at all, 1.0 means the FFT is completely smoothed flat
+    //  "fftAmplification": 1.0, // 1.0 means no change, larger values will result in brighter/stronger bands, smaller values in darker/weaker ones
+    //},
+    //"textures":{ // the keys below will become the shader variable names
+    //  "texChecker":"textures/checker.png",
+    //  "texNoise":"textures/noise.png",
+    //  "texTex1":"textures/tex1.jpg",
+    //},
+    "gui":{
+      "outputHeight": 200,
+      "opacity": 192, // 255 means the editor occludes the effect completely, 0 means the editor is fully transparent
+      "texturePreviewWidth": 64,
+      "spacesForTabs": true,
+      "tabSize": 2,
+      "visibleWhitespace": true,
+      "autoIndent": "smart", // can be "none", "preserve" or "smart"
+      "scrollXFactor": 1.0, // if horizontal scrolling is too slow you can speed it up here (or change direction)
+      "scrollYFactor": 1.0, // if vertical scrolling is too slow you can speed it up here (or change direction)
+    },
+    "midi":{ // the keys below will become the shader variable names, the values are the CC numbers
+      "fMidiKnob1": 70,
+      "fMidiKnob2": 71, // e.g. this would be CC#16, i.e. by default the leftmost knob on a nanoKONTROL 2
+      "fMidiKnob3": 72,
+      "fMidiKnob4": 73,
+      "fMidiKnob5": 74,
+      "fMidiKnob6": 75,
+      "fMidiKnob7": 76,
+      "fMidiKnob8": 77,
+    },
+    // this section is if you want to enable NDI streaming; otherwise just ignore it
+    /*"ndi":{
+      "enabled": true,
+      "connectionString": "<ndi_product something=\"123\"/>", // metadata sent to the receiver; completely optional
+      "identifier": "hello!", // device identifier; must be unique, also helps source discovery/identification in the receiver if there are multiple sources on the network
+      "frameRate": 60.0, // frames per second
+      "progressive": true, // progressive or interleaved?
+    },*/
+    // this section is if you want to customise colors to your liking
+    "theme":{
+      "text": "FFFFFF", // color format is "RRGGBB" or "AARRGGBB" in hexadecimal
+      "comment": "00FF00",
+      "number": "FF8000",
+      "op": "FFCC00",
+      "keyword": "FF6600",
+      "type": "00FFFF",
+      "builtin": "44FF88",
+      "preprocessor": "C0C0C0",
+      "selection": "C06699CC", // background color when selecting text
+      "charBackground": "C0000000", // if set, this value will be used (instead of gui opacity) behind characters
+    },*
+    //"postExitCmd":"copy_to_dropbox.bat" // this command gets ran when you quit Bonzomatic, and the shader filename gets passed to it as first parameter. Use this to take regular backups.
+  }
