@@ -1,6 +1,15 @@
   #version 410 core
 
 uniform float fGlobalTime; // in seconds
+
+uniform float fMidiKnob1;
+uniform float fMidiKnob2;
+uniform float fMidiKnob3;
+uniform float fMidiKnob4;
+uniform float fMidiKnob5;
+uniform float fMidiKnob6;
+uniform float fMidiKnob7;
+uniform float fMidiKnob8;
 uniform vec2 v2Resolution; // viewport resolution (in pixels)
 
 uniform sampler1D texFFT; // towards 0.0 is bass / lower freq, towards 1.0 is higher / treble freq
@@ -21,7 +30,7 @@ const float PHI = (sqrt(5)*0.5 + 0.5);
 #define fmod(x, y) mod(x, y)
 #define atan2(x,y) atan(x,y)
 float sgn(float x) {
-	return (x<0)?-1:1;
+	return (x<0)?-1.0:1.0;
 }
 
 vec2 sgn(vec2 v) {
@@ -426,6 +435,8 @@ float fOpDifferenceChamfer (float a, float b, float r) {
 
 // The "Round" variant uses a quarter-circle to join the two objects smoothly:
 float fOpUnionRound(float a, float b, float r) {
+  //float interpolation = clamp(0.5 + 0.5 * (a - b) / r, 0.0, 1.0);
+  //return mix(a, b, interpolation) - r* interpolation * (1.0 - interpolation);
   vec2 u = max(vec2(r - a,r - b), vec2(0,0));
   return max(r, min (a, b)) - length(u);
 }
@@ -513,6 +524,7 @@ float fOpDifferenceStairs(float a, float b, float r, float n) {
   return -fOpUnionStairs(-a, b, r, n);
 }
 
+#define fOpUnion min
 
 // Similar to fOpUnionRound, but more lipschitz-y at acute angles
 // (and less so at 90 degrees). Useful when fudging around too much
@@ -521,7 +533,6 @@ float fOpUnionSoft(float a, float b, float r) {
   float e = max(r - abs(a - b), 0);
   return min(a, b) - e*e*0.25/r;
 }
-
 
 float opSmoothUnion( float d1, float d2, float k ) {
     float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
@@ -558,6 +569,9 @@ float fOpTongue(float a, float b, float ra, float rb) {
 }
 
 
+float fOpInterpolate(float shape1, float shape2, float amount){
+    return mix(shape1, shape2, amount);
+}
 
 float opOnion( in float sdf, in float thickness )
 {
@@ -596,16 +610,38 @@ mat4 rotateY(float theta) {
   float c = cos(theta);
   float s = sin(theta);
   return mat4(
-      vec4(c, 0, -s, 0),
-      vec4(0, 1, 0, 0),
-      vec4(s, 0, c, 0),
-      vec4(0, 0, 0, 1)
+      vec4( c,  0, -s,  0),
+      vec4( 0,  1,  0,  0),
+      vec4( s,  0,  c,  0),
+      vec4( 0,  0,  0,  1)
   );
   return mat4(
       vec4(c, 0, s, 0),
       vec4(0, 1, 0, 0),
       vec4(-s, 0, c, 0),
       vec4(0, 0, 0, 1)
+  );
+}
+
+mat4 rotateX(float theta) {
+  float c = cos(theta);
+  float s = sin(theta);
+  return mat4(
+      vec4( 1,  0,  0,  0),
+      vec4( 0,  c,  s,  0),
+      vec4( 0, -s,  c,  0),
+      vec4( 0,  0,  0,  1)
+  );
+}
+
+mat4 rotateZ(float theta) {
+  float c = cos(theta);
+  float s = sin(theta);
+  return mat4(
+      vec4( c, -s,  0,  0),
+      vec4( s,  c,  0,  0),
+      vec4( 0,  0,  1,  0),
+      vec4( 0,  0,  0,  1)
   );
 }
 
@@ -631,6 +667,8 @@ float hallway( vec3 samplePoint )
   d = opSubtraction( sdBox( samplePoint - vec3(-7,2,0), vec3(1.4) ), d );
   return d;
 }
+
+
 
 float tyyppi( vec3 samplePoint )
 {
@@ -686,8 +724,11 @@ float sdRuuvi( vec3 p, vec2 h, float ang )
 float sdRuuviY( vec3 p, vec2 h, float ang )
 {
   float rot = atan2(p.x,p.z);
-  float d = length(p.xz) - h.x  + sin(p.y*ang+rot)/10.0;
-  return max(d, abs(p.y) - h.y);
+  float l = length(p.xz);
+  float d = l - h.x  + cos(p.y*ang+rot)/10.0;
+  d = max(d, abs(p.y) - h.y);
+  float md = sdCylinder(p - vec3(0,1.1,0), h.x, 0.2);
+  return opUnion(md,d);
 }
 
 
@@ -705,23 +746,47 @@ float boltNut( vec3 samplePoint, vec3 pos ) {
   return k;
 }
 
+float lightBulbKanta( vec3 p, float h, float r )
+{
+  p.y -= clamp( p.y, 0.0, h );
+  return length( p ) - r;
+}
+float sqr(float a) { return a*a; }
+float fOpUnionRound2(float a, float b, float r) {
+  //return fOpUnionRound(a, b, r);
+  
+  float interpolation = clamp(0.5 + 0.5 * (a - b) / r, 0.0, 1.0);
+  return mix(a, b, interpolation) - r* interpolation * (1.0 - interpolation);
+  
+  vec2 u = max(vec2( (r-a), (r-b) ), vec2(0,0));
+  //return r-length(u);
+  return max(r, min (a, b)) - length(u);
+  
+  return a*r + b*(1-r);
+  //vec2 u = max(vec2(r - a,r - b), vec2(0,0));
+  //return max(r, min (a, b)) - length(u);
+}
 float lightBulb( vec3 samplePoint )
 {
   float k = sdSphere( samplePoint, 3 );
   float k2 = sdCylinder( samplePoint - vec3(0,-3,0), 1.75, 1);
   k = fOpUnionRound( k, k2, 1);
   
-  float kanta = sdRuuviY( samplePoint-vec3(0,-5,0), vec2(1.75,1), 10 );
-  return fOpUnionRound(k, kanta, 1);
+  float ruuvi = sdRuuviY( samplePoint-vec3(0,-5.3,0), vec2(1.75,1), 10 );
+  //k = fOpUnionRound2(k, kanta, 1);
+  k = fOpUnion(k, ruuvi);
+  //k = kanta;
+  //k = fOpUnionRound2(k, sdSphere(samplePoint -vec3(0,-6,0), 1.4), fMidiKnob7 );
+  vec3 pos = vec3(0,-6.45,0);
+  k = fOpUnionRound2( k, sdEllipsoid( samplePoint-pos, vec3(1.42,0.5,1.42) ), 0.2);
+  //k = fOpUnionRound(k, lightBulbKanta(samplePoint -vec3(0,-7,0), 0.15, 1), 1 );
+  
+  
+  
   return k;
 }
 
 
-float lightBulbKanta( vec3 p, float h, float r )
-{
-  p.y -= clamp( p.y, 0.0, h );
-  return length( p ) - r;
-}
 
 
 float sdMouth( vec3 p, float le, float r1, float r2 )
@@ -735,7 +800,6 @@ float sdMouth( vec3 p, float le, float r1, float r2 )
   p = vec3(m1*p.xy,p.z);
   //p = vec3(m1*p.xz,p.y).xzy;
   return sdRoundBox(p, vec3(1,0.2,0.5), 0.1);
-
 
 
   vec3 w = vec3( p.x, p.y, max(abs(p.z)-le,0.0) );
@@ -759,6 +823,17 @@ float sdMouth( vec3 p, float le, float r1, float r2 )
   }
 
   return k;  
+}
+float carheadEar( vec3 p )
+{
+  float le = 0.1;
+  float r1 = 0.25;
+  float r2 = 0.1;
+  vec4 q = vec4( p.x, max(abs(p.y)-le,0.0), p.z, 1 );
+  q = q - vec4(0,0.3,0,0);
+  q = q * rotateZ( fMidiKnob7 * 2 * PI );
+  q = q + vec4(0,0.3,0,0);
+  return length(vec2(length(q.xy)-r1,q.z)) - r2;
 }
 
 float carhead( vec3 samplePoint ) {
@@ -792,7 +867,8 @@ float carhead( vec3 samplePoint ) {
 
   vec3 sampleX = samplePoint + vec3(0,0,-1);
   sampleX.x = abs(sampleX.x);
-  float ear = sdLink( sampleX, 0.1, 0.4, 0.1 );
+  //float ear = sdLink( sampleX, 0.1, 0.25, 0.1 );
+  float ear = carheadEar( sampleX );
   k = min(ear, k );
 
 
@@ -828,8 +904,10 @@ float ruuviScene( vec3 samplePoint ) {
     float m = length( mod(samplePoint.xy + v2, v2*2) - v2 ) - 0.1;*/
 //    return m;
 
-  float k4 = carhead(samplePoint);
-  return k4;
+  //return tyyppi(samplePoint);
+  //return hallway(samplePoint);
+  
+//  return carhead(samplePoint);
 
 
   //return min(m,k4);
@@ -881,7 +959,7 @@ vec2 sdf( vec3 eye, vec3 viewRayDirection )
     for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
         vec3 pos = eye + depth * viewRayDirection;
 //        float dist = scene(pos);
-	    float dist = ruuviScene(pos);
+    float dist = ruuviScene(pos);
         if (dist < EPSILON)
             return vec2(depth,dust);
         depth += dist;
@@ -934,26 +1012,35 @@ void main(void)
 	m.y += fGlobalTime * 0.25;
 
   vec3 viewDir = rayDirection(75.0, v2Resolution.xy, gl_FragCoord.xy);
-  vec3 eye = vec3(0.0, 4.0 -  cos(fGlobalTime) , 14.0 + sin(fGlobalTime) );
+  //vec3 eye = vec3(0.0, 4.0 -  cos(fGlobalTime) , 14.0 + sin(fGlobalTime) );
+
   vec3 tgt = vec3(0.0, 0.0, 0.0);
 
     
-  eye.x += 0*sin(texture( texFFTSmoothed, 0 ).r * 100 );
+/*  eye.x += 0*sin(texture( texFFTSmoothed, 0 ).r * 100 );
   eye.y += 0*sin(texture( texFFTSmoothed, 0.1 ).r * 100 );
-  eye.z += 0*sin(texture( texFFTSmoothed, 0.3 ).r * 100 );
+  eye.z += 0*sin(texture( texFFTSmoothed, 0.3 ).r * 100 );*/
 
 float angle = fGlobalTime;
 float distance = 5;
 angle = cos(angle) + PI / 2 ;
-  eye.x = distance * sin(angle);
+angle = fMidiKnob8 + PI / 2.0;
+/*  eye.x = distance * sin(angle);
   eye.y = 5 * cos(angle*1.3);
   eye.z = distance * cos(angle);
+  eye.x = distance * sin( fMidiKnob1 * PI * 2 ) - cos ( fMidiKnob5 * PI * 2 );
+  eye.y = 5  - sin( fMidiKnob5* PI * 2 );
+  eye.z = distance * cos( fMidiKnob1 * PI * 2 );*/
+  
+  vec4 eye = vec4(8 + 16 * pow(30,fMidiKnob6),0,0,1);
+  eye = eye * (rotateZ(fMidiKnob1 * PI * 4) * rotateY(fMidiKnob5 * PI * 4));
+  
 
 
 
 
 //  mat4 viewToWorld = viewMatrix(eye, vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0));
-  mat4 viewToWorld = viewMatrix( eye, tgt, vec3(0.0, 1.0, 0.0));
+  mat4 viewToWorld = viewMatrix( eye.xyz, tgt, vec3(0.0, 1.0, 0.0));
   vec3 worldDir = ( ( vec4(viewDir, 0.0) * viewToWorld ) ).xyz;
 
 
@@ -963,10 +1050,20 @@ angle = cos(angle) + PI / 2 ;
   eye.z = -1;
   worldDir = vec3(0,0,1);*/
 
-  vec2 depth = sdf( eye, worldDir );
+  vec2 depth = sdf( eye.xyz, worldDir );
 
-  vec3 hitPos = eye + depth.x * worldDir;
+  vec3 hitPos = eye.xyz + depth.x * worldDir;
   out_color.xyz = estimateNormal( hitPos );
+  
+  float dd = out_color.x + out_color.y + out_color.x;
+  dd /= 3;
+  dd = pow(dd,fMidiKnob3-EPSILON);
+  
+  dd = clamp(dd,0,1);
+
+  out_color.x = dd * (1-fMidiKnob2) + out_color.x * fMidiKnob2;
+  out_color.y = dd * (1-fMidiKnob2) + out_color.y * fMidiKnob2;
+  out_color.z = dd * (1-fMidiKnob2) + out_color.z * fMidiKnob2;
   out_color.w = 1;
   
 //  depth *= depth;
