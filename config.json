@@ -42,7 +42,20 @@
       "fMidiKnob6": 75,
       "fMidiKnob7": 76,
       "fMidiKnob8": 77,
+      "fMidiPad1": 20,
+      "fMidiPad2": 21,
+      "fMidiPad3": 22,
+      "fMidiPad4": 23,
+      "fMidiPad5": 24,
+      "fMidiPad6": 25,
+      "fMidiPad7": 26,
+      "fMidiPad8": 27,
     },
+    "include": [
+        "domain.glsl",
+        "combinations.glsl",
+        "sdf.glsl",
+    ]
     // this section is if you want to enable NDI streaming; otherwise just ignore it
     /*"ndi":{
       "enabled": true,
