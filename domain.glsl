@@ -1,3 +1,42 @@
+#version 410 core
+
+struct Hit {
+  float dist;
+  vec3 ambientColor;
+  vec3 diffuseColor;
+  vec3 specularColor;
+  float shininess;
+};
+
+const int MAX_MARCHING_STEPS = 255;
+const float MIN_DIST = 0.0;
+const float MAX_DIST = 100.0;
+const float EPSILON = 0.0001;
+const float PI = acos(-1.0);
+const float TAU = (2*PI);
+const float PHI = (sqrt(5)*0.5 + 0.5);
+
+#define saturate(x) clamp(x, 0, 1)
+#define fmod(x, y) mod(x, y)
+#define atan2(x,y) atan(x,y)
+float sgn(float x) {
+       return (x<0)?-1.0:1.0;
+}
+
+vec2 sgn(vec2 v) {
+       return vec2((v.x<0)?-1:1, (v.y<0)?-1:1);
+}
+
+vec3 hash3( vec3 n )
+{
+    return fract(sin(n)*vec3(158.5453123,278.1459123,341.3490423));
+}
+vec2 hash2( vec2 n )
+{
+    return fract(sin(n)*vec2(158.5453123,278.1459123));
+}
+
+
 ////////////////////////////////////////////////////////////////
 //
 //                DOMAIN MANIPULATION OPERATORS
