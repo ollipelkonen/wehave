@@ -10,7 +10,7 @@ struct Hit {
 
 const int MAX_MARCHING_STEPS = 255;
 const float MIN_DIST = 0.0;
-const float MAX_DIST = 100.0;
+const float MAX_DIST = 200.0;
 const float EPSILON = 0.0001;
 const float PI = acos(-1.0);
 const float TAU = (2*PI);
@@ -227,14 +227,7 @@ mat4 rotateY(float theta) {
       vec4( s,  0,  c,  0),
       vec4( 0,  0,  0,  1)
   );
-  return mat4(
-      vec4(c, 0, s, 0),
-      vec4(0, 1, 0, 0),
-      vec4(-s, 0, c, 0),
-      vec4(0, 0, 0, 1)
-  );
 }
-
 mat4 rotateX(float theta) {
   float c = cos(theta);
   float s = sin(theta);
@@ -245,7 +238,6 @@ mat4 rotateX(float theta) {
       vec4( 0,  0,  0,  1)
   );
 }
-
 mat4 rotateZ(float theta) {
   float c = cos(theta);
   float s = sin(theta);
@@ -256,9 +248,6 @@ mat4 rotateZ(float theta) {
       vec4( 0,  0,  0,  1)
   );
 }
-
-
-
 
 
 
@@ -295,8 +284,6 @@ mat4 viewMatrix(vec3 eye, vec3 center, vec3 up) {
       vec4(0.0, 0.0, 0.0, 1)
   );
 }
-
-
 
 
 
