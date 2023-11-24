@@ -1,13 +1,5 @@
 #version 410 core
 
-struct Hit {
-  float dist;
-  vec3 ambientColor;
-  vec3 diffuseColor;
-  vec3 specularColor;
-  float shininess;
-};
-
 const int MAX_MARCHING_STEPS = 255;
 const float MIN_DIST = 0.0;
 const float MAX_DIST = 200.0;
@@ -251,6 +243,24 @@ mat4 rotateZ(float theta) {
 
 
 
+
+float voronoi( in vec2 x )
+{
+    ivec2 p = ivec2( floor( x.x ), floor(x.y) );
+    vec2  f = fract( x );
+
+    float res = 8.0;
+    for( int j=-1; j<=1; j++ )
+    for( int i=-1; i<=1; i++ )
+    {
+        ivec2 b = ivec2( i, j );
+        vec2  r = vec2( b ) - f + hash2( p + b );
+        float d = dot( r, r );
+
+        res = min( res, d );
+    }
+    return sqrt( res );
+}
 
 
 

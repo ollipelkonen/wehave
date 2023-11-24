@@ -27,6 +27,14 @@ layout(location = 0) out vec4 out_color; // out_color must be written in order t
 
 
 
+struct Hit {
+  float dist;
+  vec3 normal;
+  vec3 ambientColor;
+  vec3 diffuseColor;
+  vec3 specularColor;
+  float shininess;
+};
 
 
 
@@ -175,31 +183,31 @@ float sdMouth( vec3 p, float le, float r1, float r2 )
 {
 
   // from opCheapBend https://iquilezles.org/www/articles/distfunctions/distfunctions.htm
-  const float ang = 10.0; // or some other amount
-  float c = cos(ang*p.x);
-  float s = sin(ang*p.x);
+  const float ang = 2.0; // or some other amount
+  float c = cos(ang*p.x / 18.0);
+  float s = sin(ang*p.x / 18.0);
   mat2  m1 = mat2(c,-s,s,c);
   p = vec3(m1*p.xy,p.z);
   //p = vec3(m1*p.xz,p.y).xzy;
-  return sdRoundBox(p, vec3(1,0.2,0.5), 0.1);
+  
+  //return sdRoundBox(p, vec3(1,0.2,0.5) * 5, 0.1);
 
 
-  vec3 w = vec3( p.x, p.y, max(abs(p.z)-le,0.0) );
+  vec3 w = vec3( p.x/3+1, p.y, max(abs(p.z)-le,0.0) );
 
   float k = length(vec2(length(w.yz)-r1,w.x)) - r2;
 
-
   //ristikko
   //if ( sdBox(p,vec3(r2,r1,le)) < 0 )
-  if ( sdRoundBox(p,vec3(r2*0.9,r1*0.1,le*0.9),0.2) < 0 )
+  if ( sdRoundBox(p,vec3(r2*4.5,r1*0.35,le*1.6),0.2*5) < 0 )
   {
     //horizontal stripes are dy/xy
-    float dz = 0.05;
-    float dy = 0.06;
+    float dz = 0.25;
+    float dy = 0.3;
     vec3 q = p;
     q.z = abs(mod(p.z+dz, dz*2)-dz);
     q.y = abs(mod(p.y+dy, dy*2)-dy);
-    float m = min( length(q.xz)-0.02, length(q.xy) -0.02 );  
+    float m = min( length(q.xz)-0.08, length(q.xy) -0.08 );  
     //float m = length(q.xz) -0.02;  
     return min(m,k);
   }
@@ -208,45 +216,47 @@ float sdMouth( vec3 p, float le, float r1, float r2 )
 }
 float carheadEar( vec3 p )
 {
-  float le = 0.1;
-  float r1 = 0.25;
-  float r2 = 0.1;
+  float le = 0.1 *5;
+  float r1 = 0.25 *5;
+  float r2 = 0.1 *5;
   vec4 q = vec4( p.x, max(abs(p.y)-le,0.0), p.z, 1 );
-  q = q - vec4(0,0.3,0,0);
+  q = q - vec4(0,0.3,0,0) *5;
   q = q * rotateZ( fMidiKnob7 * 2 * PI );
-  q = q + vec4(0,0.3,0,0);
+  q = q + vec4(0,0.3,0,0) *5;
   return length(vec2(length(q.xy)-r1,q.z)) - r2;
 }
 
 float carhead( vec3 samplePoint ) {
 
-  float k = sdSphere( samplePoint, 1 );
+  float k = sdSphere( samplePoint, 5 );
 //return min(k,sdMouth( samplePoint - vec3(1.2,-0.8,0), 0.5, 0.12, 0.03 ));
 //  float jaw = sdBox( samplePoint - vec3(0.4,-0.6,0), vec3(0.5,0.5,0.4) );
-  float jaw = sdRoundBox( samplePoint - vec3(0.6,-0.7,0), vec3(0.05,0.05,0.04), 0.45 );
-  k = fOpUnionSoft( jaw, k, 0.25 );
+  float jaw = sdRoundBox( samplePoint - vec3(2.5,-3,0), vec3(0.25,0.25,0.2), 2.5 );
+  k = fOpUnionSoft( jaw, k, 0.95 );
   // ohimot
-  k = opSmoothSubtraction( sdBox(samplePoint - vec3(0,0,1.753), vec3(1.5,1.5,0.5)), k, 0.97 );
-  k = opSmoothSubtraction( sdBox(samplePoint + vec3(0,0,1.753), vec3(1.5,1.5,0.5)), k, 0.97 );
+  k = opSmoothSubtraction( sdBox(samplePoint - vec3(0,0,6.85), vec3(1.5,1.5,0.5)*5), k, 0.9 );
+  k = opSmoothSubtraction( sdBox(samplePoint + vec3(0,0,6.85), vec3(1.5,1.5,0.5)*5), k, 0.9 );
   // nose
-  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.15,-0.12,0), 0.0001 ), 0.2 );
-  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.20,-0.3,0), 0.02 ), 0.2 );
-  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.3,-0.35,0), 0.01 ), 0.1 );
+  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(0.96,-0.12,0)*5, 0.5 ), 0.22 );
+  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.0,-0.2,0)*5, 0.5 ), 0.52 );
+  k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.1,-0.35,0)*5, 0.5 ), 0.51 );
   //k = fOpUnionSoft( k, sdSphere(samplePoint - vec3(1.3,-0.4,0.1), 0.01 ), 0.1 );
   // eyes
-  k = opSubtraction( sdSphere(samplePoint - vec3(0.8,0,0.3), 0.5 ), k );
-  k = opSubtraction( sdSphere(samplePoint - vec3(0.8,0,-0.3), 0.5 ), k );
+  k = opSubtraction( sdSphere(samplePoint - vec3(4,0,1.5), 1.5 ), k );
+  k = opSubtraction( sdSphere(samplePoint - vec3(4,0,-1.5), 1.5 ), k );
   
   k = opOnion( k, 0.1 );
   //float sdLink( vec3 p, float le, float r1, float r2 )
-  vec3 sampleX = samplePoint + vec3(0,0,-1);
+  vec3 sampleX = samplePoint + vec3(0,0,-4.3);
   sampleX.x = abs(sampleX.x);
   //float ear = sdLink( sampleX, 0.1, 0.25, 0.1 );
   float ear = carheadEar( sampleX );
   k = min(ear, k );
 
-  float mouth = sdMouth( samplePoint - vec3(1.2,-0.8,0), 0.3, 0.2, 0.03 );
-  k = min(mouth, k );
+  k = opSubtraction( sdSphere(samplePoint-vec3(4.5,-4.0,0),1.6), k );
+  float mouth = sdMouth( samplePoint - vec3(4.0,-4,0), 0.3, 1.2, 0.3 );
+  k = fOpUnionSoft( mouth, k, 0.96 );
+  //k = min(mouth, k );
 
   //hajalla?
   /*float size = 100;
@@ -348,6 +358,7 @@ float jalkaScene( vec3 samplePoint ) {
   float t1 = fmod(fGlobalTime / 2.0, 1);
   float t2 = fmod(fGlobalTime / 2.0 + 0.25, 1);
   vec3 p1 = vec3(-2,0,0);
+  Hit h;
   return min(
     jalka(samplePoint - p1, t1),
     jalka(samplePoint + p1, t2)
@@ -371,30 +382,32 @@ const int scene = HEADSCENE;
 
 
 vec3 estimateNormal(vec3 p) {
+  //TODO: use larger value further away
+  float D = EPSILON;
   switch (scene) {
     case JALKASCENE:
       return normalize(vec3(
-          jalkaScene(vec3(p.x + EPSILON, p.y, p.z)) - jalkaScene(vec3(p.x - EPSILON, p.y, p.z)),
-          jalkaScene(vec3(p.x, p.y + EPSILON, p.z)) - jalkaScene(vec3(p.x, p.y - EPSILON, p.z)),
-          jalkaScene(vec3(p.x, p.y, p.z  + EPSILON)) - jalkaScene(vec3(p.x, p.y, p.z - EPSILON))
+          jalkaScene(vec3(p.x + D, p.y, p.z)) - jalkaScene(vec3(p.x - D, p.y, p.z)),
+          jalkaScene(vec3(p.x, p.y + D, p.z)) - jalkaScene(vec3(p.x, p.y - D, p.z)),
+          jalkaScene(vec3(p.x, p.y, p.z  + D)) - jalkaScene(vec3(p.x, p.y, p.z - D))
       ));
     case RUUVISCENE:
       return normalize(vec3(
-          ruuviScene(vec3(p.x + EPSILON, p.y, p.z)) - ruuviScene(vec3(p.x - EPSILON, p.y, p.z)),
-          ruuviScene(vec3(p.x, p.y + EPSILON, p.z)) - ruuviScene(vec3(p.x, p.y - EPSILON, p.z)),
-          ruuviScene(vec3(p.x, p.y, p.z  + EPSILON)) - ruuviScene(vec3(p.x, p.y, p.z - EPSILON))
+          ruuviScene(vec3(p.x + D, p.y, p.z)) - ruuviScene(vec3(p.x - D, p.y, p.z)),
+          ruuviScene(vec3(p.x, p.y + D, p.z)) - ruuviScene(vec3(p.x, p.y - D, p.z)),
+          ruuviScene(vec3(p.x, p.y, p.z  + D)) - ruuviScene(vec3(p.x, p.y, p.z - D))
       ));
     case TYYPPISCENE :
       return normalize(vec3(
-          tyyppiScene(vec3(p.x + EPSILON, p.y, p.z)) - tyyppiScene(vec3(p.x - EPSILON, p.y, p.z)),
-          tyyppiScene(vec3(p.x, p.y + EPSILON, p.z)) - tyyppiScene(vec3(p.x, p.y - EPSILON, p.z)),
-          tyyppiScene(vec3(p.x, p.y, p.z  + EPSILON)) - tyyppiScene(vec3(p.x, p.y, p.z - EPSILON))
+          tyyppiScene(vec3(p.x + D, p.y, p.z)) - tyyppiScene(vec3(p.x - D, p.y, p.z)),
+          tyyppiScene(vec3(p.x, p.y + D, p.z)) - tyyppiScene(vec3(p.x, p.y - D, p.z)),
+          tyyppiScene(vec3(p.x, p.y, p.z  + D)) - tyyppiScene(vec3(p.x, p.y, p.z - D))
       ));
     case HEADSCENE :
       return normalize(vec3(
-          carhead(vec3(p.x + EPSILON, p.y, p.z)) - carhead(vec3(p.x - EPSILON, p.y, p.z)),
-          carhead(vec3(p.x, p.y + EPSILON, p.z)) - carhead(vec3(p.x, p.y - EPSILON, p.z)),
-          carhead(vec3(p.x, p.y, p.z  + EPSILON)) - carhead(vec3(p.x, p.y, p.z - EPSILON))
+          carhead(vec3(p.x + D, p.y, p.z)) - carhead(vec3(p.x - D, p.y, p.z)),
+          carhead(vec3(p.x, p.y + D, p.z)) - carhead(vec3(p.x, p.y - D, p.z)),
+          carhead(vec3(p.x, p.y, p.z  + D)) - carhead(vec3(p.x, p.y, p.z - D))
       ));
   }
 }
@@ -402,12 +415,14 @@ vec3 estimateNormal(vec3 p) {
 
 
 
-Hit sdf( vec3 eye, vec3 viewRayDirection )
+Hit sdf( vec3 eye, vec3 viewRayDirection, out float ao )
 {
   float start = MIN_DIST;
   float end = MAX_DIST;
   float depth = start;
   float dust = 0.0;
+  float aoSum = 0.0;
+  float aoMaxSum = 0.0;
   Hit hit;
   hit.dist = start;
   for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
@@ -416,17 +431,27 @@ Hit sdf( vec3 eye, vec3 viewRayDirection )
     switch (scene) {
       case JALKASCENE:
         hit.dist = jalkaScene(pos);
+        hit.normal = estimateNormal(pos);
         break;
       case TYYPPISCENE:
         hit.dist = tyyppiScene(pos);
+        hit.normal = estimateNormal(pos);
         break;
       case RUUVISCENE:
         hit.dist = ruuviScene(pos);
+        hit.normal = estimateNormal(pos);
         break;
       case HEADSCENE:
         hit.dist = carhead(pos);
+        hit.normal = estimateNormal(pos);
         break;
     }
+
+    //aoSum    += 1. / pow(2., i) * hit.dist;
+    //aoMaxSum += 1. / pow(2., i) * (i+1) * hit.dist;
+    //ao = aoSum / aoMaxSum;
+    ao = 1 - float(i) / (MAX_MARCHING_STEPS-1);
+
     //hit.dist = legScene( pos );
 //    hit.dist = carhead(pos);
     if (hit.dist < EPSILON)
@@ -449,6 +474,13 @@ Hit sdf( vec3 eye, vec3 viewRayDirection )
 
 
 
+vec3 texture1( vec2 uv ) {
+  return vec3(
+    0.7 + 0.2 * sin(uv.x),
+    0.6 + 0.2 * cos(uv.y*1.2),
+    0.6 + 0.3 * sin(uv.x + cos(uv.y))
+  );
+}
 
 
 void main(void)
@@ -483,9 +515,9 @@ angle = fMidiKnob8 + PI / 2.0;
 
 
   vec4 eye = 
-    rotateY(fMidiKnob5 * PI * 4)
-    * rotateZ(fMidiKnob1 * PI * 4)
-    * vec4( 2+14 * pow(fMidiKnob6+0.4, 5),0,0,1)
+    rotateY(fMidiKnob5 * PI * 3 + fGlobalTime/10.0)
+    * rotateZ(fMidiKnob1 * PI * 3)
+    * vec4( 6+24 * pow(fMidiKnob6+0.7, 3),0,0,1)
     ;
 
 
@@ -502,38 +534,91 @@ angle = fMidiKnob8 + PI / 2.0;
   eye.z = -1;
   worldDir = vec3(0,0,1);*/
 
-  Hit hit = sdf( eye.xyz, worldDir );
+  float ao;
+  Hit hit = sdf( eye.xyz, worldDir, ao );
   float depth = hit.dist;
 
   vec3 hitPos = eye.xyz + depth * worldDir;
-  out_color.xyz = estimateNormal( hitPos );
-  
-  float dd = out_color.x + out_color.y + out_color.x;
-  dd /= 3;
-  dd = pow(dd,fMidiKnob3-EPSILON);
-  
-  dd = clamp(dd,0,1);
 
-  out_color.x = dd * (1-fMidiKnob2) + out_color.x * fMidiKnob2;
-  out_color.y = dd * (1-fMidiKnob2) + out_color.y * fMidiKnob2;
-  out_color.z = dd * (1-fMidiKnob2) + out_color.z * fMidiKnob2;
-  out_color += out_color; // * pow( fMidiPad1, 10.0 );
-  out_color.w = 1;
-  
-//  depth *= depth;
-  //out_color = vec4( c,c,c,1 );
-  /*if ( depth > (MAX_DIST - EPSILON) )
+  if (fMidiKnob4 < 0.5 )
   {
-      return float4(0,0,1,1);
-  }
-  vec3 hitPos = eye + depth * worldDir;
-  //depth = saturate( depth * 1.0 );
-  vec3 norm = estimateNormal(hitPos);
+    out_color.xyz = hit.normal;
+    float dd = out_color.x + out_color.y + out_color.x;
+    dd /= 3;
+    dd = pow(dd,fMidiKnob3-EPSILON);
+    
+    dd = clamp(dd,0,1);
 
-  float d = sdf( )
-	vec4 t = plas( m * 3.14, fGlobalTime ) / d;
-	t = clamp( t, 0.0, 1.0 );
-	out_color = f + t;*/
+    out_color.x = dd * (1-fMidiKnob2) + out_color.x * fMidiKnob2;
+    out_color.y = dd * (1-fMidiKnob2) + out_color.y * fMidiKnob2;
+    out_color.z = dd * (1-fMidiKnob2) + out_color.z * fMidiKnob2;
+    out_color += out_color; // * pow( fMidiPad1, 10.0 );
+    out_color.w = 1;
+    
+  //  depth *= depth;
+    //out_color = vec4( c,c,c,1 );
+    /*if ( depth > (MAX_DIST - EPSILON) )
+    {
+        return float4(0,0,1,1);
+    }
+    vec3 hitPos = eye + depth * worldDir;
+    //depth = saturate( depth * 1.0 );
+    vec3 norm = estimateNormal(hitPos);
+
+    float d = sdf( )
+    vec4 t = plas( m * 3.14, fGlobalTime ) / d;
+    t = clamp( t, 0.0, 1.0 );
+    out_color = f + t;*/
+  }
+  else if ( fMidiKnob4 < 1.0 )
+  {
+    vec3 lightPos = vec3( 10.0 * sin(fGlobalTime), 8.0*cos(fGlobalTime), 4.0*cos(fGlobalTime*0.7));
+    vec3 lightDir = hitPos-lightPos;
+
+    float distance = length(lightDir);
+    lightDir = normalize(lightDir);
+    vec3 ambientColor = vec3( 0.15, 0.15, 0.3 );
+    vec3 diffuseColor = vec3( 0.4, 0.3, 0.5 );
+  
+    vec3 specColor = vec3( 1.0, 1.0, 1.0 );
+    float nDotL = dot( hit.normal, lightDir );
+    float intensity = saturate(nDotL);
+
+    //float intensity = nDotL;
+    vec3 H = normalize(lightDir + viewDir);
+    float NdotH = dot( hit.normal, H);
+    float spec = pow(saturate(NdotH), 20.1);
+
+    //diffuseColor = hash3( hitPos.xyx / 10000 );
+
+    /*vec3 n = hash3(hitPos);
+    vec3 v = normalize(eye.xyz-hitPos);
+		float nl = max ( 0.0, dot ( n, lightDir ) );
+    vec3 kk = lightDir + v;
+    vec3  h  = normalize( kk );
+    float hn = max ( 0.0, dot ( h, n ) );
+    float sp = pow ( hn, 150.0 );*/
+
+
+    float vor = voronoi( hitPos.xy );
+    float vor2 = voronoi( hitPos.xz );
+    ambientColor.x += vor / 10;
+    ambientColor.z += vor2 / 10;
+    diffuseColor.x += vor;
+    diffuseColor.z += vor2;
+    
+    out_color.xyz = ambientColor +
+                     diffuseColor * intensity + // distance +
+                     specColor * spec; // / distance;
+                     
+                   out_color.x *= ao;
+                   out_color.y *= ao;
+                   out_color.z *= ao;
+
+
+//    out_color.y = intensity;
+
+  }
 }
 
 
