@@ -196,8 +196,23 @@ float pReflect(inout vec3 p, vec3 planeNormal, float offset) {
 
 
 
-
-
+//TODO:
+/*float opRevolution( in vec3 p, in sdf2d primitive, float o )
+{
+    vec2 q = vec2( length(p.xz) - o, p.y );
+    return primitive(q)
+}
+float opExtrusion( in vec3 p, in sdf2d primitive, in float h )
+{
+    float d = primitive(p.xy)
+    vec2 w = vec2( d, abs(p.z) - h );
+    return min(max(w.x,w.y),0.0) + length(max(w,0.0));
+}
+float opElongate( in sdf3 primitive, in vec3 p, in vec3 h )
+{
+    vec3 q = p - clamp( p, -h, h );
+    return primitive( q );
+}*/
 
 
 

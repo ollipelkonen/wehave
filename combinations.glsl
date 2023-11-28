@@ -188,12 +188,10 @@ float opSubtraction( float d1, float d2 ) { return max(-d1,d2); }
 
 float opIntersection( float d1, float d2 ) { return max(d1,d2); }
 
+float opRound( in float p, float rad ) { return p - rad; }
 
-float opRound( in float p, float rad )
-{
-  return p - rad;
-}
 
+//TODO:
 /*float opDisplace( in sdf3d primitive, in vec3 p )
 {
 float d1 = primitive(p);
